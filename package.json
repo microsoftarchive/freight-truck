@@ -1,0 +1,25 @@
+{
+  "name": "freight-truck",
+  "version": "0.0.0",
+  "description": "Upload to S3 when files are changed",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Upload",
+    "s3"
+  ],
+  "author": "Adam Schroder <adamknows@gmail.com>",
+  "contributors": [
+    "Aditya <aditya@netroy.in>"
+  ],
+  "dependencies": {
+    "grunt": "~0.4.1",
+    "colors": "0.6.0-1",
+    "knox": "0.5.2",
+    "crypto": "0.0.3",
+    "async": "~0.2.9"
+  },
+  "license": "BSD-2-Clause"
+}

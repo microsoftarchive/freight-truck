@@ -1,0 +1,17 @@
+{
+  "freight-truck": {
+    "target": {
+      "baseDir":"images",
+      "glob":["**/*.jpg", "**/*.png"],
+      "skipSha1": false,
+      "gzip": false
+    },
+    "options": {
+      "cdn": {
+        "bucket": "123",
+        "key": "123",
+        "secret": "123"
+      }
+    }
+  }
+}
