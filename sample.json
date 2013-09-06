@@ -1,8 +1,16 @@
 {
   "freight-truck": {
-    "target": {
+    "images": {
+      "prefix":"images",
       "baseDir":"images",
       "glob":["**/*.jpg", "**/*.png"],
+      "skipSha1": false,
+      "gzip": false
+    },
+    "languages": {
+      "prefix":"languages",
+      "baseDir":"lang",
+      "glob":["*.js"],
       "skipSha1": false,
       "gzip": false
     },

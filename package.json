@@ -19,7 +19,8 @@
     "colors": "0.6.0-1",
     "knox": "0.5.2",
     "crypto": "0.0.3",
-    "async": "~0.2.9"
+    "async": "~0.2.9",
+    "mime": "~1.2.11"
   },
   "license": "BSD-2-Clause"
 }
