@@ -9,6 +9,10 @@ module.exports = function (grunt) {
   var crypto = require('crypto');
   var mime = require('mime');
 
+  var log = console.log.bind(console, '[UPLOAD]'.blue);
+  var skipped = console.log.bind(console, '[SKIPPED]'.grey);
+  var error = console.log.bind(console, '[ERROR]'.red);
+
   var options, uploader, data, cdnUrl;
   var pathsMap = {};
 
@@ -18,10 +22,11 @@ module.exports = function (grunt) {
 
     var baseDir = data.baseDir;
     var filePath = path.join(baseDir, name);
+    var prefix = data.prefix;
 
     createSha1(filePath, function (err, sha1) {
 
-      upload(name, filePath, sha1, callback);
+      upload(name, filePath, sha1, prefix, callback);
     });
   }
 
@@ -30,7 +35,6 @@ module.exports = function (grunt) {
     var shasum = crypto.createHash('sha1');
     var fileStream = fs.ReadStream(file);
     fileStream.on('data', shasum.update.bind(shasum));
-
     fileStream.on('error', function(err) {
 
       grunt.log.error('error reading stream'.red, file, err);
@@ -38,6 +42,7 @@ module.exports = function (grunt) {
     });
 
     fileStream.on('end', function() {
+
       // give the stream some time to cleanup, just in case
       process.nextTick(function () {
 
@@ -46,11 +51,11 @@ module.exports = function (grunt) {
     });
   }
 
-  function upload (name, path, sha1, callback) {
+  function upload (name, path, sha1, prefix, callback) {
 
     var fileStats = fs.statSync(path);
     var fileStream = fs.ReadStream(path);
-    var remotePath = cdnUrl + '/' + data.prefix + '/' + sha1 + '/' + name;
+    var remotePath = cdnUrl + '/' + prefix + '/' + sha1 + '/' + name;
 
     var headers = {
       'Content-Type': mime.lookup(name),
@@ -59,41 +64,42 @@ module.exports = function (grunt) {
     };
 
     // upload the file stream
-    // uploader.putStream(fileStream, remotePath, headers, function (err, response) {
+    uploader.putStream(fileStream, remotePath, headers, function (err, response) {
+      console.log(response)
+      grunt.log.writeln(err, response.statusCode)
+      // break if any upload fails
+      if (err || response.statusCode !== 200) {
+        grunt.log.error('error uploading', name, '\t trying again in a second');
 
-      // // break if any upload fails
-      // if (err || response.statusCode !== 200) {
-      //   grunt.log.error('error uploading', name, '\t trying again in a second');
+        // stop if already tried 3 times
+        var retryCount = retryCountMap[name] || 0;
+        if (retryCount > 3) {
+          grunt.log.error('failed at uploading', name, 'after 3 attempts');
+          grunt.fatal();
+        }
 
-      //   // stop if already tried 3 times
-      //   var retryCount = retryCountMap[name] || 0;
-      //   if (retryCount > 3) {
-      //     grunt.log.error('failed at uploading', name, 'after 3 attempts');
-      //     grunt.fatal();
-      //   }
+        // try again in a second
+        setTimeout(function() {
 
-      //   // try again in a second
-      //   setTimeout(function() {
-
-      //     retryCountMap[name] = retryCount + 1;
-      //     uploadFile(name, filePath, sha1, callback);
-      //   }, 1000);
-      //   return;
-      // }
-      // else {
+          retryCountMap[name] = retryCount + 1;
+          uploadFile(name, filePath, sha1, callback);
+        }, 1000);
+        return;
+      }
+      else {
 
         var previousPaths = grunt.file.readJSON('paths.json');
-       // console.log(previousPaths[name][1] , sha1)
+        // console.log(previousPaths[name][1] , sha1)
         grunt.log.writeln('[UPLOAD]'.yellow, '\u2713'.green, name);
 
         // save the remote path for the build
         pathsMap[name] = [remotePath, sha1];
-
+        console.log(name)
         callback();
         // throttle the upload a bit
-      //   setTimeout(callback, 500);
-      // }
-    // });
+        setTimeout(callback, 500);
+      }
+    });
   }
 
   grunt.registerMultiTask('freight-truck', function () {
@@ -130,12 +136,13 @@ module.exports = function (grunt) {
       while (files.length) {
         merged.push.apply(merged, files.pop());
       }
-
       merged.length && merged.forEach(function (file) {
 
         hashAndUpload(file, function () {
 
           grunt.file.write('paths.json', JSON.stringify(pathsMap, null, 2), function (error) {
+
+            console.log('in callback')
 
             if (err) {
               throw err;
