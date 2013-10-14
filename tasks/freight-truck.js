@@ -1,61 +1,48 @@
-module.exports = function (grunt) {
+/*globals require*/
+module.exports = function  (grunt) {
 
   'use strict';
 
   var fs = require('fs');
-  var async = require('async');
   var path = require('path');
+
+  require('colors');
   var knox = require('knox');
   var crypto = require('crypto');
   var mime = require('mime');
 
-  var log = console.log.bind(console, '[UPLOAD]'.blue);
-  var skipped = console.log.bind(console, '[SKIPPED]'.grey);
-  var error = console.log.bind(console, '[ERROR]'.red);
+  var async = grunt.util.async;
 
-  var options, uploader, data, cdnUrl;
-  var pathsMap = {};
+  var uploader;
+  var options;
 
-  require('colors');
+  var remotePathsMap;
+  var retryCountMap = {};
 
-  function hashAndUpload (name, callback) {
-
-    var baseDir = data.baseDir;
-    var filePath = path.join(baseDir, name);
-    var prefix = data.prefix;
-
-    createSha1(filePath, function (err, sha1) {
-
-      upload(name, filePath, sha1, prefix, callback);
-    });
-  }
-
-  function createSha1 (file, callback) {
+  function calculateSha1(file, callback) {
 
     var shasum = crypto.createHash('sha1');
     var fileStream = fs.ReadStream(file);
     fileStream.on('data', shasum.update.bind(shasum));
-    fileStream.on('error', function(err) {
 
-      grunt.log.error('error reading stream'.red, file, err);
-      grunt.fatal('error reading file'.red, file);
+    fileStream.on('error', function(err) {
+      grunt.log.error('error reading stream', file, err);
+      grunt.fatal('error reading file', file);
     });
 
     fileStream.on('end', function() {
-
       // give the stream some time to cleanup, just in case
       process.nextTick(function () {
-
         callback(null, shasum.digest('hex'));
       });
     });
   }
 
-  function upload (name, path, sha1, prefix, callback) {
+  function uploadFile(name, filePath, sha1, callback) {
 
-    var fileStats = fs.statSync(path);
-    var fileStream = fs.ReadStream(path);
-    var remotePath = cdnUrl + '/' + prefix + '/' + sha1 + '/' + name;
+    var fileStats = fs.statSync(filePath);
+    var fileStream = fs.ReadStream(filePath);
+    var remotePath = options.remotePath + sha1 + '/' + name;
 
     var headers = {
       'Content-Type': mime.lookup(name),
@@ -65,8 +52,7 @@ module.exports = function (grunt) {
 
     // upload the file stream
     uploader.putStream(fileStream, remotePath, headers, function (err, response) {
-      console.log(response)
-      grunt.log.writeln(err, response.statusCode)
+
       // break if any upload fails
       if (err || response.statusCode !== 200) {
         grunt.log.error('error uploading', name, '\t trying again in a second');
@@ -88,24 +74,33 @@ module.exports = function (grunt) {
       }
       else {
 
-        var previousPaths = grunt.file.readJSON('paths.json');
-        // console.log(previousPaths[name][1] , sha1)
         grunt.log.writeln('[UPLOAD]'.yellow, '\u2713'.green, name);
 
         // save the remote path for the build
-        pathsMap[name] = [remotePath, sha1];
-        console.log(name)
-        callback();
+        remotePathsMap[name] = remotePath;
+
         // throttle the upload a bit
         setTimeout(callback, 500);
       }
     });
   }
 
-  grunt.registerMultiTask('freight-truck', function () {
+  function hashAndUploadFile(name, callback) {
+
+    var baseDir = options.baseDir;
+    // make path absolute
+    var filePath = path.join(baseDir, name);
+
+    // calculate sha1 for prefixing
+    calculateSha1(filePath, function(err, sha1) {
+      uploadFile(name, filePath, sha1, callback);
+    });
+  }
+
+  grunt.registerTask('freight-truck', function () {
 
     var done = this.async();
-    data = this.data;
+
     options = this.options({
       'cdn': {
         'bucket': '',
@@ -114,44 +109,25 @@ module.exports = function (grunt) {
       }
     });
 
-    cdnUrl = '//' + options.cdn.bucket + '.s3.amazonaws.com';
+    options.remotePath = this.options.remotePath || '';
+
     uploader = knox.createClient(options.cdn);
-    pathsMap = {};
 
-    var baseDir = path.resolve(data.baseDir);
+    // Clear out the remote path map
+    remotePathsMap = {};
 
-    async.map(data.glob, function (pattern, callback) {
+    // start uploading
+    async.forEach(options.files, hashAndUploadFile, function () {
 
-      grunt.file.glob(pattern, {
-        'cwd': baseDir
-      }, function (err, files) {
-        if (err) {
-          return callback(err);
+      // Dump the URL map to a file
+      grunt.file.write('paths.json', JSON.stringify(remotePathsMap, null, 2), function (err) {
+
+        if(err) {
+          throw err;
         }
-        callback(null, files);
+
+        done();
       });
-    }, function (err, files) {
-
-      var merged = [];
-      while (files.length) {
-        merged.push.apply(merged, files.pop());
-      }
-      merged.length && merged.forEach(function (file) {
-
-        hashAndUpload(file, function () {
-
-          grunt.file.write('paths.json', JSON.stringify(pathsMap, null, 2), function (error) {
-
-            console.log('in callback')
-
-            if (err) {
-              throw err;
-            }
-          });
-        });
-      });
-
-      done();
     });
   });
 };

@@ -14,6 +14,11 @@
   "contributors": [
     "Aditya <aditya@netroy.in>"
   ],
+  "homepage": "https://github.com/wunderlist/freight-truck",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com:wunderlist/freight-truck.git"
+  },
   "dependencies": {
     "grunt": "~0.4.1",
     "colors": "0.6.0-1",
