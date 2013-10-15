@@ -50,6 +50,11 @@ module.exports = function  (grunt) {
       'x-amz-acl': 'public-read'
     };
 
+    var fileStatSync = fs.lstatSync(filePath);
+    if (fileStatSync.isSymbolicLink() && !fileStatSync.isFile()) {
+      filePath = path.resolve(path.dirname(filePath), fs.readlinkSync(filePath));
+    }
+
     // upload the file stream
     uploader.putStream(fileStream, remotePath, headers, function (err, response) {
 
