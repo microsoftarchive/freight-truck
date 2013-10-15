@@ -116,7 +116,7 @@ module.exports = function  (grunt) {
     });
 
     options.remotePath = this.options.remotePath || '';
-
+    console.log(options, this.options)
     uploader = knox.createClient(options.cdn);
 
     // Clear out the remote path map
