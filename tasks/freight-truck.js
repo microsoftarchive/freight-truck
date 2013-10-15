@@ -44,6 +44,7 @@ module.exports = function  (grunt) {
     var fileStream = fs.ReadStream(filePath);
     var remotePath = options.remotePath + sha1 + '/' + name;
 
+    console.log(options.remotePath, name, remotePath)
     var headers = {
       'Content-Type': mime.lookup(name),
       'Content-Length': fileStats.size,
