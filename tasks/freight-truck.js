@@ -5,6 +5,7 @@ module.exports = function  (grunt) {
 
   var fs = require('fs');
   var path = require('path');
+  var url = require("url")
 
   require('colors');
   var knox = require('knox');
@@ -42,7 +43,10 @@ module.exports = function  (grunt) {
 
     var fileStats = fs.statSync(filePath);
     var fileStream = fs.ReadStream(filePath);
-    var remotePath = options.remotePath + sha1 + '/' + name;
+    var filename = url.parse(name).pathname;
+    filename = filename.substring(filename.lastIndexOf("/") + 1);
+
+    var remotePath = options.remotePath + sha1 + '/' + filename;
 
     var headers = {
       'Content-Type': mime.lookup(name),
