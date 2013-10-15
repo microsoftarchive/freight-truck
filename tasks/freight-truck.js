@@ -57,6 +57,8 @@ module.exports = function  (grunt) {
     var fileStatSync = fs.lstatSync(filePath);
     if (fileStatSync.isSymbolicLink() && !fileStatSync.isFile()) {
       filePath = path.resolve(path.dirname(filePath), fs.readlinkSync(filePath));
+      grunt.log.writeln('[SKIPPED]'.grey, '\u2713'.grey, filename);
+      callback();
     }
 
     // upload the file stream
@@ -83,13 +85,13 @@ module.exports = function  (grunt) {
       }
       else {
 
-        grunt.log.writeln('[UPLOAD]'.yellow, '\u2713'.green, name);
+        grunt.log.writeln('[UPLOAD]'.yellow, '\u2713'.green, filename);
 
         // save the remote path for the build
         remotePathsMap[filename] = remotePath;
 
         // throttle the upload a bit
-        setTimeout(callback, 500);
+        setTimeout(callback, 200);
       }
     });
   }
@@ -124,6 +126,7 @@ module.exports = function  (grunt) {
     remotePathsMap = {};
 
     // start uploading
+    // investigate if we should do this syncronously
     async.forEach(options.files, hashAndUploadFile, function () {
 
       // Dump the URL map to a file
