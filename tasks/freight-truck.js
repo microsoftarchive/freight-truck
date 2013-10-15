@@ -64,19 +64,19 @@ module.exports = function  (grunt) {
 
       // break if any upload fails
       if (err || response.statusCode !== 200) {
-        grunt.log.error('error uploading', name, '\t trying again in a second');
+        grunt.log.error('error uploading', filename, '\t trying again in a second');
 
         // stop if already tried 3 times
-        var retryCount = retryCountMap[name] || 0;
+        var retryCount = retryCountMap[filename] || 0;
         if (retryCount > 3) {
-          grunt.log.error('failed at uploading', name, 'after 3 attempts');
+          grunt.log.error('failed at uploading', filename, 'after 3 attempts');
           grunt.fatal();
         }
 
         // try again in a second
         setTimeout(function() {
 
-          retryCountMap[name] = retryCount + 1;
+          retryCountMap[filename] = retryCount + 1;
           uploadFile(name, filePath, sha1, callback);
         }, 1000);
         return;
@@ -86,7 +86,7 @@ module.exports = function  (grunt) {
         grunt.log.writeln('[UPLOAD]'.yellow, '\u2713'.green, name);
 
         // save the remote path for the build
-        remotePathsMap[name] = remotePath;
+        remotePathsMap[filename] = remotePath;
 
         // throttle the upload a bit
         setTimeout(callback, 500);
