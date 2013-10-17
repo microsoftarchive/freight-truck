@@ -43,11 +43,19 @@ module.exports = function  (grunt) {
 
     var fileStats = fs.statSync(filePath);
     var fileStream = fs.ReadStream(filePath);
-    var filename = url.parse(name).pathname;
-    filename = filename.substring(filename.lastIndexOf("/") + 1);
+    var fileName;
 
-    var remotePath = options.remotePath + sha1 + '/' + filename;
+    // if we use the same folder structure then set the just use the name as fileName
+    if (options.useLocalFolderStructure) {
+      fileName = name;
+    }
+    // otherwise use the file in the flat sha1 folder
+    else {
+      fileName = url.parse(name).pathname;
+      fileName = fileName.substring(fileName.lastIndexOf('/') + 1);
+    }
 
+    var remotePath = options.remotePath + sha1 + '/' + fileName;
     var headers = {
       'Content-Type': mime.lookup(name),
       'Content-Length': fileStats.size,
@@ -57,7 +65,7 @@ module.exports = function  (grunt) {
     var fileStatSync = fs.lstatSync(filePath);
     if (fileStatSync.isSymbolicLink() && !fileStatSync.isFile()) {
       filePath = path.resolve(path.dirname(filePath), fs.readlinkSync(filePath));
-      grunt.log.writeln('[SKIPPED]'.grey, '\u2713'.grey, filename);
+      grunt.log.writeln('[SKIPPED]'.grey, '\u2713'.grey, fileName);
       callback();
     }
 
@@ -66,29 +74,29 @@ module.exports = function  (grunt) {
 
       // break if any upload fails
       if (err || response.statusCode !== 200) {
-        grunt.log.error('error uploading', filename, '\t trying again in a second');
+        grunt.log.error('error uploading', fileName, '\t trying again in a second');
 
         // stop if already tried 3 times
-        var retryCount = retryCountMap[filename] || 0;
+        var retryCount = retryCountMap[fileName] || 0;
         if (retryCount > 3) {
-          grunt.log.error('failed at uploading', filename, 'after 3 attempts');
+          grunt.log.error('failed at uploading', fileName, 'after 3 attempts');
           grunt.fatal();
         }
 
         // try again in a second
         setTimeout(function() {
 
-          retryCountMap[filename] = retryCount + 1;
+          retryCountMap[fileName] = retryCount + 1;
           uploadFile(name, filePath, sha1, callback);
         }, 1000);
         return;
       }
       else {
 
-        grunt.log.writeln('[UPLOAD]'.yellow, '\u2713'.green, filename);
+        grunt.log.writeln('[UPLOAD]'.yellow, '\u2713'.green, fileName);
 
         // save the remote path for the build
-        remotePathsMap[filename] = remotePath;
+        remotePathsMap[fileName] = remotePath;
 
         // throttle the upload a bit
         setTimeout(callback, 200);
