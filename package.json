@@ -1,6 +1,6 @@
 {
   "name": "freight-truck",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "Upload to S3 when files are changed",
   "main": "index.js",
   "scripts": {

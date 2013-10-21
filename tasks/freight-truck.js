@@ -135,7 +135,7 @@ module.exports = function  (grunt) {
 
     // start uploading
     // investigate if we should do this syncronously
-    async.forEach(options.files, hashAndUploadFile, function () {
+    async.forEachLimit(options.files, 30, hashAndUploadFile, function () {
 
       // Dump the URL map to a file
       grunt.file.write('paths.json', JSON.stringify(remotePathsMap, null, 2), function (err) {
